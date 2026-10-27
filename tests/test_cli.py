@@ -1,3 +1,4 @@
+import json
 import tempfile
 from pathlib import Path
 
@@ -119,6 +120,24 @@ def test_scan_ci_reads_the_branch_range_and_falls_back(tmp_path: Path, runner):
     )
     assert fallback.exit_code == 0
     assert "Falling back" in fallback.output
+
+    report = tmp_path / "reports" / "spurhund.sarif"
+    with_report = runner.invoke(
+        app,
+        ["scan-ci", str(repo), "--base-ref", "main", "--head-ref", "HEAD", "--sarif", str(report), *_rules_args()],
+    )
+    assert with_report.exit_code == 1
+    document = json.loads(report.read_text(encoding="utf-8"))
+    result = document["runs"][0]["results"][0]
+    assert result["ruleId"] == "sec-generic-key"
+    assert result["locations"][0]["physicalLocation"]["region"]["startLine"] == 3
+
+    blocked = runner.invoke(
+        app,
+        ["scan-ci", str(repo), "--base-ref", "main", "--sarif", str(tmp_path), *_rules_args()],
+    )
+    assert blocked.exit_code == 2
+    assert "Unable to write SARIF report" in blocked.output
 
 
 def test_init_and_ignore_commands(tmp_path: Path, runner):

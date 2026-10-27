@@ -89,17 +89,20 @@ Stage a change and commit. The hook scans the index and blocks the commit when i
 
 ## Continuous integration
 
-Install the package and fetch the base branch, then scan the pull-request range. `scan-ci` does not need a staged index:
+[action.yml](action.yml) is a composite action. This repository runs it on every push and pull request to `main` from [`.github/workflows/ci.yml`](.github/workflows/ci.yml). Another repository can call the same action after it is tagged:
 
 ```yaml
-- name: Scan pull request changes
-  run: |
-    pip install .
-    git fetch origin main
-    spurhund scan-ci --base-ref origin/main --head-ref HEAD
+- uses: actions/checkout@v4
+  with:
+    fetch-depth: 0
+- uses: OWNER/spurhund@v0.1.0
+  with:
+    base-ref: origin/main
+    config-path: .spurhund-rules.yml
+    sarif-file: spurhund.sarif
 ```
 
-A missing base ref, such as a shallow clone that never fetched `origin/main`, falls back to `spurhund scan-repo`. Use `spurhund scan-staged .` only in a job that has already staged the diff you want checked.
+The action installs this package and runs `spurhund scan-ci --base-ref <base> --head-ref HEAD`. `--sarif` is added only when `sarif-file` is set. The console script remains `spurhund`. A missing base ref falls back to `spurhund scan-repo`. Use `spurhund scan-staged .` only in a job that has already staged the diff you want checked.
 
 ## Ignore paths
 

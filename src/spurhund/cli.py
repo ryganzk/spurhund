@@ -15,6 +15,7 @@ from spurhund.core.engine import ScannerEngine
 from spurhund.core.filter import is_binary_file, should_ignore_path
 from spurhund.core.diff import get_branch_diff, get_staged_diff, parse_patch_lines
 from spurhund.models import Finding
+from spurhund.sarif import write_sarif
 
 app = typer.Typer(help="Spurhund secret and policy scanner")
 ignore_app = typer.Typer(help="Manage repository-wide exclusion paths")
@@ -106,8 +107,14 @@ def _findings_from_patch(patch: str, global_ignores: list[str], rules: list) -> 
 
     return findings, scanned_count
 
-def _render_findings(findings: list[Finding], github_annotations: bool = False) -> None:
+def _render_findings(findings: list[Finding], github_annotations: bool = False, sarif: str = "") -> None:
     """Print the scan result and exit 0 when clean, or 1 when findings exist."""
+    if sarif.strip():
+        try:
+            write_sarif(sarif, findings)
+        except OSError as exc:
+            _fail(f"Unable to write SARIF report {sarif}: {exc}")
+
     if not findings:
         console.print("[green]✓ Clean. No secrets or policy violations detected.[/green]")
         raise typer.Exit(code=0)
@@ -235,6 +242,7 @@ def scan_repo(
     repo_path: str = typer.Argument(".", help="Path to repository root"),
     config: str = typer.Option(".spurhund-rules.yml", help="Path to rules YAML"),
     github_annotations: bool = typer.Option(False, "--github-annotations", help=_GITHUB_ANNOTATIONS_HELP),
+    sarif: str = typer.Option("", "--sarif", help="Write a SARIF 2.1.0 report to this path."),
 ):
     """Scan an entire repository filesystem while respecting ignore rules and binary gates."""
     root = Path(repo_path).resolve()
@@ -283,7 +291,7 @@ def scan_repo(
         _fail(f"Failed to walk repository {root}: {exc}")
 
     console.print(f"[dim]Scanned {scanned_count} files.[/dim]")
-    _render_findings(all_findings, github_annotations)
+    _render_findings(all_findings, github_annotations, sarif)
 
 @app.command()
 def scan_staged(
@@ -318,6 +326,7 @@ def scan_ci(
     head_ref: str = typer.Option("HEAD", help="Head ref for the commit range"),
     config: str = typer.Option(".spurhund-rules.yml", help="Path to rules YAML"),
     github_annotations: bool = typer.Option(False, "--github-annotations", help=_GITHUB_ANNOTATIONS_HELP),
+    sarif: str = typer.Option("", "--sarif", help="Write a SARIF 2.1.0 report to this path."),
 ):
     """Scan a pull-request commit range for secret and credential leaks.
 
@@ -339,12 +348,12 @@ def scan_ci(
             f"[yellow]Branch diff {base_ref}...{head_ref} failed ({exc}). "
             "Falling back to a full repository scan.[/yellow]"
         )
-        scan_repo(repo_path, config, github_annotations)
+        scan_repo(repo_path, config, github_annotations, sarif)
 
     all_findings, scanned_count = _findings_from_patch(patch, global_ignores, rules)
 
     console.print(f"[dim]Scanned {scanned_count} lines in {base_ref}...{head_ref}.[/dim]")
-    _render_findings(all_findings, github_annotations)
+    _render_findings(all_findings, github_annotations, sarif)
 
 if __name__ == "__main__":
     app()  # pragma: no cover

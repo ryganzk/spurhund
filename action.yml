@@ -1,0 +1,50 @@
+name: Spurhund
+description: Scan a pull request range for hardcoded secrets and policy violations.
+inputs:
+  base-ref:
+    description: Target ref to diff against.
+    required: false
+    default: origin/main
+  config-path:
+    description: Path to the Spurhund rules file.
+    required: false
+    default: .spurhund-rules.yml
+  sarif-file:
+    description: Path for a SARIF 2.1.0 report. Leave empty to skip the report.
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install Spurhund
+      shell: bash
+      run: pip install "${{ github.action_path }}"
+
+    - name: Fetch base ref
+      shell: bash
+      env:
+        BASE_REF: ${{ inputs.base-ref }}
+      run: |
+        git fetch origin "${BASE_REF}:${BASE_REF}" || true
+        if [[ "${BASE_REF}" == origin/* ]]; then
+          branch="${BASE_REF#origin/}"
+          git fetch origin "${branch}:refs/remotes/origin/${branch}" || true
+        fi
+
+    - name: Scan commit range
+      shell: bash
+      env:
+        BASE_REF: ${{ inputs.base-ref }}
+        CONFIG_PATH: ${{ inputs.config-path }}
+        SARIF_FILE: ${{ inputs.sarif-file }}
+      run: |
+        args=(scan-ci --base-ref "$BASE_REF" --head-ref HEAD --config "$CONFIG_PATH")
+        if [ -n "$SARIF_FILE" ]; then
+          args+=(--sarif "$SARIF_FILE")
+        fi
+        spurhund "${args[@]}"

@@ -340,7 +340,6 @@ def scan_ci(
             "Falling back to a full repository scan.[/yellow]"
         )
         scan_repo(repo_path, config, github_annotations)
-        return
 
     all_findings, scanned_count = _findings_from_patch(patch, global_ignores, rules)
 
@@ -348,4 +347,4 @@ def scan_ci(
     _render_findings(all_findings, github_annotations)
 
 if __name__ == "__main__":
-    app()
+    app()  # pragma: no cover

@@ -17,6 +17,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
     "ruff>=0.1.0",
 ]
 
@@ -25,3 +26,18 @@ spurhund = "spurhund.cli:app"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "src"]
+addopts = "--cov=spurhund --cov-report=term-missing --cov-report=html:htmlcov"
+
+[tool.coverage.run]
+branch = true
+source = ["spurhund"]
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.coverage.html]
+directory = "htmlcov"

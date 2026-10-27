@@ -162,3 +162,12 @@ real_key = "dGVzdF9zZWNyZXRfa2V5X2Zvcl90ZXN0aW5nXzEyMzQ="  # spurhund:ignore
 ```
 
 Prefer a path exclusion or a tighter rule when the same false positive shows up in many files.
+
+## Tests
+
+```bash
+pip install -e ".[dev]"
+pytest
+```
+
+`pytest` runs the suite and writes a coverage report. Missing lines are listed in the terminal. The same report is written to `htmlcov/index.html`.

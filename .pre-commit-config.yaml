@@ -1,0 +1,13 @@
+# This repository is not published or tagged, so the hook runs from this checkout.
+# .pre-commit-hooks.yaml is the manifest other repositories use once a tag exists.
+repos:
+  - repo: local
+    hooks:
+      - id: spurhund
+        name: Spurhund
+        description: Spurhund scans staged commits for hardcoded secrets, credentials, and policy violations.
+        entry: .venv/bin/spurhund scan-staged
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]

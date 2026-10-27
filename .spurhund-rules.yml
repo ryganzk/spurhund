@@ -1,0 +1,43 @@
+version: '1.0'
+settings:
+  ignore_paths:
+  - .git/**
+  - .venv/**
+  - node_modules/**
+  - vendor/**
+  - '*.lock'
+  - '*.png'
+  - '*.jpg'
+  - '*.pdf'
+  - '*.pyc'
+rules:
+- id: sec-github-pat
+  name: GitHub Personal Access Token
+  severity: CRITICAL
+  prefixes:
+  - ghp_
+  - github_pat_
+  regex_pattern: (?i)(?:ghp_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})
+  min_entropy: 3.0
+  capture_group: 0
+  path_excludes:
+  - '**/tests/fixtures/**'
+- id: sec-generic-key
+  name: Generic High-Entropy API Secret
+  severity: HIGH
+  prefixes:
+  - key
+  - token
+  - secret
+  - auth
+  - cred
+  regex_pattern: (?i)(?:[a-z0-9_]*(?:key|secret|token|auth|cred)[a-z0-9_]*)\s*[:=]\s*["']([a-zA-Z0-9_\-\+/=]{24,64})["']
+  capture_group: 1
+  min_entropy: 3.8
+  exclude_values:
+  - (?i)mock
+  - (?i)dummy
+  - (?i)placeholder
+  path_excludes:
+  - '**/*_test.py'
+  - '**/test_*.py'

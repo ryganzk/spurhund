@@ -34,7 +34,15 @@ This writes `.spurhund-rules.yml` when it is missing, and merges patterns from `
 
 ## Scan
 
-Exit code `0` means nothing was found. Exit code `1` means findings or a usage error, so a failing scan fails the commit or the CI job.
+Every scan command uses the same exit codes:
+
+| Code | Meaning |
+| --- | --- |
+| `0` | The scan finished and found nothing, including an empty diff or no matching files. |
+| `1` | The scan finished and found secrets or policy violations. |
+| `2` | The scan did not finish: missing or invalid config, unreadable path, git error, or invalid flags. |
+
+When `GITHUB_ACTIONS` is `true`, each finding is also printed as a workflow annotation (`::error file=…,line=…,title={rule_id}::…`) so GitHub shows it on the pull request diff. Pass `--github-annotations` to emit those lines outside Actions. `scan-ci` still falls back to a full tree scan when the commit range cannot be produced; that scan uses the same exit codes.
 
 ```bash
 # One file
@@ -45,9 +53,12 @@ spurhund scan-repo .
 
 # Added lines in the Git index only
 spurhund scan-staged .
+
+# Added lines in a pull-request range (merge base of base...head)
+spurhund scan-ci --base-ref origin/main --head-ref HEAD
 ```
 
-`scan-repo` walks the tree, skips paths in `settings.ignore_paths`, and skips files whose first 8 KiB contain a null byte. `scan-staged` reads `git diff --cached` and checks only lines being added.
+`scan-repo` walks the tree, skips paths in `settings.ignore_paths`, and skips files whose first 8 KiB contain a null byte. `scan-staged` reads `git diff --cached` and checks only lines being added. `scan-ci` reads `git diff <base>...<head>` and checks those added lines at their line numbers in the new file. Paths in `settings.ignore_paths` are skipped. If the range cannot be produced, `scan-ci` scans the whole tree instead.
 
 Each command accepts `--config` when the rules file is not `.spurhund-rules.yml` in the working directory.
 
@@ -78,16 +89,17 @@ Stage a change and commit. The hook scans the index and blocks the commit when i
 
 ## Continuous integration
 
-Install the package, then scan the tree. `scan-repo` does not depend on a staged index:
+Install the package and fetch the base branch, then scan the pull-request range. `scan-ci` does not need a staged index:
 
 ```yaml
-- name: Scan for secrets
+- name: Scan pull request changes
   run: |
     pip install .
-    spurhund scan-repo .
+    git fetch origin main
+    spurhund scan-ci --base-ref origin/main --head-ref HEAD
 ```
 
-Use `spurhund scan-staged .` only in a job that has already staged the diff you want checked.
+A missing base ref, such as a shallow clone that never fetched `origin/main`, falls back to `spurhund scan-repo`. Use `spurhund scan-staged .` only in a job that has already staged the diff you want checked.
 
 ## Ignore paths
 

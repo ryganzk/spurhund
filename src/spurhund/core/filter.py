@@ -8,7 +8,9 @@ def is_binary_file(file_path: Path) -> bool:
         with open(file_path, "rb") as f:
             chunk = f.read(8192)
             return b"\x00" in chunk
-    except (OSError, PermissionError):
+    except PermissionError:
+        raise
+    except OSError:
         return True
 
 def should_ignore_path(rel_path: str, ignore_patterns: List[str]) -> bool:
